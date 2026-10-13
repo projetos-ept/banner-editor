@@ -1,0 +1,1451 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "banerlab API",
+    "version": "1.0.0",
+    "description": "Cloudflare Workers + R2. API privada com token compartilhado por espaço de trabalho. JSON autocontido com imagens base64. Limite da implementação: 8 MiB por documento. Sem processamento de PDF no servidor. Campos opcionais de estilo são normalizados pelo mesmo BannerCore do editor."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787/v1",
+      "description": "Wrangler local"
+    },
+    {
+      "url": "https://banerlab-api.SEU-SUBDOMINIO.workers.dev/v1",
+      "description": "Substitua pela URL publicada"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Verificar processo HTTP (não testa R2)",
+        "operationId": "health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Worker responde",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "const": "ok"
+                    },
+                    "service": {
+                      "const": "banerlab"
+                    },
+                    "apiVersion": {
+                      "const": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "Preflight CORS",
+        "operationId": "preflightHealth",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Method",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "DELETE"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Headers",
+            "schema": {
+              "type": "string",
+              "example": "authorization,content-type"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Preflight aceito; cabeçalhos Allow-Origin, Allow-Methods e Allow-Headers."
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Método não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/banners": {
+      "post": {
+        "summary": "Criar ou substituir um banner pelo ID",
+        "operationId": "saveBanner",
+        "description": "Upsert: o último POST concluído prevalece. Sem controle de versão ou histórico. 200 tanto na criação como na atualização. Limite de 8.388.608 bytes antes e depois da normalização.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerInput"
+              },
+              "example": {
+                "schema": "banerlab",
+                "version": 2,
+                "id": "exemplo_api",
+                "title": "Título do seu banner",
+                "preset": "90x120",
+                "background": {
+                  "color": "#ffffff",
+                  "assetId": "",
+                  "opacity": 0.2,
+                  "fit": "cover"
+                },
+                "assets": {
+                  "imagem_exemplo": {
+                    "name": "PNG de 1 pixel: exemplo de estrutura, substitua pela sua imagem",
+                    "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+                    "width": 1,
+                    "height": 1
+                  }
+                },
+                "blocks": [
+                  {
+                    "id": "faixa_titulo",
+                    "type": "shape",
+                    "name": "Fundo do título",
+                    "x": 5,
+                    "y": 5,
+                    "w": 90,
+                    "h": 16,
+                    "opacity": 1,
+                    "locked": false,
+                    "hidden": false,
+                    "text": "",
+                    "heading": "SEÇÃO",
+                    "fontSize": 20,
+                    "headingSize": 13,
+                    "font": "Arial",
+                    "bold": false,
+                    "italic": false,
+                    "align": "left",
+                    "valign": "top",
+                    "lineHeight": 1.35,
+                    "color": "#173b2a",
+                    "fill": "#124830",
+                    "fillOpacity": 1,
+                    "headingColor": "#ffffff",
+                    "accent": "#124830",
+                    "radius": 8,
+                    "padding": 14,
+                    "border": 0,
+                    "borderColor": "#e8e0d1",
+                    "assetId": "",
+                    "fit": "contain"
+                  },
+                  {
+                    "id": "titulo",
+                    "type": "text",
+                    "name": "Título principal",
+                    "x": 8,
+                    "y": 7,
+                    "w": 84,
+                    "h": 12,
+                    "opacity": 1,
+                    "locked": false,
+                    "hidden": false,
+                    "text": "TÍTULO DO BANNER",
+                    "heading": "SEÇÃO",
+                    "fontSize": 36,
+                    "headingSize": 13,
+                    "font": "Arial",
+                    "bold": true,
+                    "italic": false,
+                    "align": "center",
+                    "valign": "center",
+                    "lineHeight": 1.35,
+                    "color": "#ffffff",
+                    "fill": "#faf7ef",
+                    "fillOpacity": 0,
+                    "headingColor": "#ffffff",
+                    "accent": "#124830",
+                    "radius": 8,
+                    "padding": 14,
+                    "border": 0,
+                    "borderColor": "#e8e0d1",
+                    "assetId": "",
+                    "fit": "contain"
+                  },
+                  {
+                    "id": "introducao",
+                    "type": "section",
+                    "name": "Introdução",
+                    "x": 5,
+                    "y": 26,
+                    "w": 90,
+                    "h": 40,
+                    "opacity": 1,
+                    "locked": false,
+                    "hidden": false,
+                    "text": "Substitua pelo conteúdo do tema solicitado.",
+                    "heading": "INTRODUÇÃO",
+                    "fontSize": 20,
+                    "headingSize": 16,
+                    "font": "Arial",
+                    "bold": false,
+                    "italic": false,
+                    "align": "left",
+                    "valign": "top",
+                    "lineHeight": 1.35,
+                    "color": "#173b2a",
+                    "fill": "#faf7ef",
+                    "fillOpacity": 1,
+                    "headingColor": "#ffffff",
+                    "accent": "#124830",
+                    "radius": 8,
+                    "padding": 14,
+                    "border": 1,
+                    "borderColor": "#e8e0d1",
+                    "assetId": "",
+                    "fit": "contain"
+                  },
+                  {
+                    "id": "imagem",
+                    "type": "image",
+                    "name": "Imagem de exemplo (substituir no editor)",
+                    "x": 25,
+                    "y": 72,
+                    "w": 50,
+                    "h": 18,
+                    "opacity": 1,
+                    "locked": false,
+                    "hidden": false,
+                    "text": "",
+                    "heading": "SEÇÃO",
+                    "fontSize": 20,
+                    "headingSize": 13,
+                    "font": "Arial",
+                    "bold": false,
+                    "italic": false,
+                    "align": "left",
+                    "valign": "top",
+                    "lineHeight": 1.35,
+                    "color": "#173b2a",
+                    "fill": "#faf7ef",
+                    "fillOpacity": 0,
+                    "headingColor": "#ffffff",
+                    "accent": "#124830",
+                    "radius": 8,
+                    "padding": 14,
+                    "border": 0,
+                    "borderColor": "#e8e0d1",
+                    "assetId": "imagem_exemplo",
+                    "fit": "contain"
+                  }
+                ],
+                "api": {
+                  "baseUrl": "",
+                  "path": "/banners"
+                },
+                "updatedAt": "2026-01-01T12:00:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Banner salvo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON, ID ou query inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "JSON maior que 8 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type deve ser application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Documento inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha interna",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Secret ou binding ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar metadados em ordem lexicográfica de ID",
+        "operationId": "listBanners",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "description": "Token opaco da resposta anterior. Continue até cursor ser null."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de resultados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items",
+                    "cursor"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "preset": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "size": {
+                            "type": "integer",
+                            "description": "Bytes armazenados"
+                          }
+                        }
+                      }
+                    },
+                    "cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON, ID ou query inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha interna",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Secret ou binding ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "Preflight CORS",
+        "operationId": "preflightBanners",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Method",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "DELETE"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Headers",
+            "schema": {
+              "type": "string",
+              "example": "authorization,content-type"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Preflight aceito; cabeçalhos Allow-Origin, Allow-Methods e Allow-Headers."
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Método não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/banners/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Carregar JSON diretamente importável no editor",
+        "operationId": "getBanner",
+        "responses": {
+          "200": {
+            "description": "Documento completo, sem envelope data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Banner"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON, ID ou query inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rota ou banner ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha interna",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Secret ou binding ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Excluir banner; também retorna 204 se já não existir",
+        "operationId": "deleteBanner",
+        "responses": {
+          "204": {
+            "description": "Excluído ou já ausente"
+          },
+          "400": {
+            "description": "JSON, ID ou query inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Falha interna",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Secret ou binding ausente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "summary": "Preflight CORS",
+        "operationId": "preflightBanner",
+        "security": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Method",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "DELETE"
+              ]
+            }
+          },
+          {
+            "in": "header",
+            "name": "Access-Control-Request-Headers",
+            "schema": {
+              "type": "string",
+              "example": "authorization,content-type"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Preflight aceito; cabeçalhos Allow-Origin, Allow-Methods e Allow-Headers."
+          },
+          "403": {
+            "description": "Origem ou cabeçalho CORS não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Método não permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Secret API_TOKEN do Worker, 32 a 512 caracteres. Não é o token da conta Cloudflare."
+      }
+    },
+    "schemas": {
+      "BannerInput": {
+        "type": "object",
+        "required": [
+          "schema",
+          "version",
+          "id",
+          "preset",
+          "assets",
+          "blocks"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "banerlab",
+              "aquilombe-banner"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "const": 2
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Título do projeto",
+            "maxLength": 160
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "60x90",
+              "80x120",
+              "90x120",
+              "100x150"
+            ]
+          },
+          "background": {
+            "type": "object",
+            "properties": {
+              "color": {
+                "type": "string",
+                "pattern": "^#[A-Fa-f0-9]{6}$"
+              },
+              "assetId": {
+                "type": "string",
+                "description": "Vazio ou chave existente em assets",
+                "maxLength": 80
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "fit": {
+                "type": "string",
+                "enum": [
+                  "contain",
+                  "cover",
+                  "fill"
+                ]
+              }
+            }
+          },
+          "assets": {
+            "type": "object",
+            "maxProperties": 100,
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          },
+          "blocks": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/components/schemas/Block"
+            }
+          },
+          "api": {
+            "type": "object",
+            "properties": {
+              "baseUrl": {
+                "type": "string",
+                "description": "Configuração opcional; nunca inclua tokens.",
+                "maxLength": 2048
+              },
+              "path": {
+                "type": "string",
+                "description": "Caminho do editor, normalmente /banners",
+                "maxLength": 200
+              }
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Na gravação, o servidor substitui pelo horário UTC atual."
+          }
+        },
+        "description": "IDs e tipos são validados estritamente. Estilos opcionais recebem defaults; valores fora da faixa são limitados pelo BannerCore. Campos desconhecidos são descartados. Recomenda-se enviar todos os campos, como no exemplo."
+      },
+      "Banner": {
+        "type": "object",
+        "required": [
+          "schema",
+          "version",
+          "id",
+          "title",
+          "preset",
+          "background",
+          "assets",
+          "blocks",
+          "api",
+          "updatedAt"
+        ],
+        "properties": {
+          "schema": {
+            "const": "banerlab"
+          },
+          "version": {
+            "type": "integer",
+            "const": 2
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Título do projeto",
+            "maxLength": 160
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "60x90",
+              "80x120",
+              "90x120",
+              "100x150"
+            ]
+          },
+          "background": {
+            "type": "object",
+            "properties": {
+              "color": {
+                "type": "string",
+                "pattern": "^#[A-Fa-f0-9]{6}$"
+              },
+              "assetId": {
+                "type": "string",
+                "description": "Vazio ou chave existente em assets",
+                "maxLength": 80
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "fit": {
+                "type": "string",
+                "enum": [
+                  "contain",
+                  "cover",
+                  "fill"
+                ]
+              }
+            }
+          },
+          "assets": {
+            "type": "object",
+            "maxProperties": 100,
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedBlock"
+            }
+          },
+          "api": {
+            "type": "object",
+            "properties": {
+              "baseUrl": {
+                "type": "string",
+                "description": "Configuração opcional; nunca inclua tokens.",
+                "maxLength": 2048
+              },
+              "path": {
+                "type": "string",
+                "description": "Caminho do editor, normalmente /banners",
+                "maxLength": 200
+              }
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Na gravação, o servidor substitui pelo horário UTC atual."
+          }
+        }
+      },
+      "Block": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "section",
+              "shape",
+              "image"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome da camada",
+            "maxLength": 120
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Posição horizontal em %. x + w <= 100."
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Posição vertical em %. y + h <= 100."
+          },
+          "w": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "h": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 100
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "description": "Texto puro",
+            "maxLength": 50000
+          },
+          "heading": {
+            "type": "string",
+            "description": "Título da seção",
+            "maxLength": 250
+          },
+          "fontSize": {
+            "type": "number",
+            "minimum": 4,
+            "maximum": 160
+          },
+          "headingSize": {
+            "type": "number",
+            "minimum": 4,
+            "maximum": 100
+          },
+          "font": {
+            "type": "string",
+            "enum": [
+              "Arial",
+              "Georgia",
+              "Verdana",
+              "Tahoma",
+              "Mono"
+            ]
+          },
+          "bold": {
+            "type": "boolean"
+          },
+          "italic": {
+            "type": "boolean"
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right",
+              "justify"
+            ]
+          },
+          "valign": {
+            "type": "string",
+            "enum": [
+              "top",
+              "center",
+              "bottom"
+            ]
+          },
+          "lineHeight": {
+            "type": "number",
+            "minimum": 0.8,
+            "maximum": 3
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "fill": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "fillOpacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "headingColor": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "accent": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "radius": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "padding": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "border": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20
+          },
+          "borderColor": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "assetId": {
+            "type": "string",
+            "description": "Exige chave em assets para blocos image",
+            "maxLength": 80
+          },
+          "fit": {
+            "type": "string",
+            "enum": [
+              "contain",
+              "cover",
+              "fill"
+            ]
+          }
+        }
+      },
+      "NormalizedBlock": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "x",
+          "y",
+          "w",
+          "h",
+          "opacity",
+          "locked",
+          "hidden",
+          "text",
+          "heading",
+          "fontSize",
+          "headingSize",
+          "font",
+          "bold",
+          "italic",
+          "align",
+          "valign",
+          "lineHeight",
+          "color",
+          "fill",
+          "fillOpacity",
+          "headingColor",
+          "accent",
+          "radius",
+          "padding",
+          "border",
+          "borderColor",
+          "assetId",
+          "fit"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(?!(__proto__|constructor|prototype)$)[A-Za-z0-9_-]{1,80}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "section",
+              "shape",
+              "image"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome da camada",
+            "maxLength": 120
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Posição horizontal em %. x + w <= 100."
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Posição vertical em %. y + h <= 100."
+          },
+          "w": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "h": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 100
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string",
+            "description": "Texto puro",
+            "maxLength": 50000
+          },
+          "heading": {
+            "type": "string",
+            "description": "Título da seção",
+            "maxLength": 250
+          },
+          "fontSize": {
+            "type": "number",
+            "minimum": 4,
+            "maximum": 160
+          },
+          "headingSize": {
+            "type": "number",
+            "minimum": 4,
+            "maximum": 100
+          },
+          "font": {
+            "type": "string",
+            "enum": [
+              "Arial",
+              "Georgia",
+              "Verdana",
+              "Tahoma",
+              "Mono"
+            ]
+          },
+          "bold": {
+            "type": "boolean"
+          },
+          "italic": {
+            "type": "boolean"
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right",
+              "justify"
+            ]
+          },
+          "valign": {
+            "type": "string",
+            "enum": [
+              "top",
+              "center",
+              "bottom"
+            ]
+          },
+          "lineHeight": {
+            "type": "number",
+            "minimum": 0.8,
+            "maximum": 3
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "fill": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "fillOpacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "headingColor": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "accent": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "radius": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "padding": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "border": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 20
+          },
+          "borderColor": {
+            "type": "string",
+            "pattern": "^#[A-Fa-f0-9]{6}$"
+          },
+          "assetId": {
+            "type": "string",
+            "description": "Exige chave em assets para blocos image",
+            "maxLength": 80
+          },
+          "fit": {
+            "type": "string",
+            "enum": [
+              "contain",
+              "cover",
+              "fill"
+            ]
+          }
+        }
+      },
+      "Asset": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome da imagem",
+            "maxLength": 160
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=\\r\\n]+$",
+            "maxLength": 28000000,
+            "description": "Data URL completa. O limite total da API (8 MiB) se aplica primeiro."
+          },
+          "width": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50000
+          },
+          "height": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50000
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "requestId"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

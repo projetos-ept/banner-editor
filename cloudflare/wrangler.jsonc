@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "banerlab-api",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-07",
+  "workers_dev": true,
+  "r2_buckets": [{ "binding": "BANNERS", "bucket_name": "banerlab-banners" }],
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:8080,http://127.0.0.1:8080",
+    "ALLOW_FILE_ORIGIN": "false"
+  }
+}

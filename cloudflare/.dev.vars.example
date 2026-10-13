@@ -1,0 +1,3 @@
+# Copy to .dev.vars and replace with a random token with at least 32 characters.
+# This sentinel is deliberately too short: authentication fails until replaced.
+API_TOKEN=REPLACE_ME
